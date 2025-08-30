@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Every successful operation starts with a simple rule: **no room for error**.  
+Every successful operation starts with a simple rule: **no room for error**.
 The Sentinel is built on that principle. This isn't your average attendance solution; it's a strategically engineered, **anti-spoofing attendance system**. It stands as a definitive verdict on who is present and who isn't.
 
 By leveraging a meticulously crafted **facial recognition model** and **liveness detection**, we ensure that every record is beyond reproach, eliminating fraud with surgical precision.
@@ -19,7 +19,7 @@ The Sentinel doesn't make assumptions; **it verifies**. This is not about trusti
 
 ### **Verifiable Presence**
 
-The core of the system is the integration of **DeepFace** and **RetinaFace**. We don't just recognize a face; we verify a living person.  
+The core of the system is the integration of **DeepFace** and **RetinaFace**. We don't just recognize a face; we verify a living person.
 A photograph or a screen recording won't cut it.
 
 - **Multi-frame capture sequence** + **anti-spoofing logic** = digital lie detector.
@@ -32,7 +32,7 @@ This is the difference between a system that works and one that is just for show
 
 ### **Executive Access**
 
-The dedicated **admin dashboard** is a **command center**.  
+The dedicated **admin dashboard** is a **command center**.
 It provides a **real-time, unfiltered view of attendance records**, allowing for quick decisions and comprehensive oversight.
 
 From this single interface, administrators can:
@@ -52,7 +52,7 @@ Your data is protected by **military-grade security**.
 - **Passwords** are one-way hashed with **bcrypt**.
 - **JWT tokens** handle sessions statelessly.
 
-➡️ Even if breached, no one can access original passwords.  
+➡️ Even if breached, no one can access original passwords.
 ➡️ JWT tokens are clean, expirable keys.
 
 It’s a **secure, efficient** way to do business.
@@ -67,7 +67,7 @@ Frontend is built with **React** for speed and simplicity.
 - **react-router-dom** → smooth navigation.
 - **react-webcam** → direct camera feed integration.
 
-The flow: **log in → capture face → done.**  
+The flow: **log in → capture face → done.**
 No unnecessary clicks. No wasted time.
 
 ---
@@ -125,3 +125,76 @@ Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+Start Flask server (development):
+
+```bash
+python app.py
+```
+
+For **production**, use **gunicorn**:
+
+```bash
+gunicorn --bind 0.0.0.0:5000 app:app
+```
+
+---
+
+### **2. Frontend Setup**
+
+Navigate to the `frontend` directory.
+
+Install Node.js dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The app will be available at **[http://localhost:5173](http://localhost:5173)** ✅
+
+---
+
+## Project Structure
+
+```plaintext
+.
+├── backend/
+│   ├── app.py             # Main Flask application
+│   ├── config.py          # Configuration settings
+│   ├── db.py              # Database connection logic
+│   ├── models.py          # Data models
+│   ├── requirements.txt   # Python dependencies
+│   └── routes.py          # API endpoints
+└── frontend/
+    ├── src/
+    │   ├── components/    # All reusable React components
+    │   ├── App.jsx        # Main application component
+    │   ├── main.jsx       # App entry point
+    │   └── index.css      # Core styles
+    ├── package.json
+    ├── tailwind.config.js
+    └── ...
+```
+
+---
+
+## A Note to the Wise ⚠️
+
+This system is built for a **controlled environment**.
+Configuration points directly to:
+
+- Local **MongoDB**
+- Local **API endpoint**
+
+➡️ For **production**, update configurations accordingly.
+
+**Don’t be an amateur.**
+You want to win? You follow the rules.
+
+---
