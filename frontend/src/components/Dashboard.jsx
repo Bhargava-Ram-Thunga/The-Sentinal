@@ -79,7 +79,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex flex-col w-full h-full p-4">
+    <div className="flex flex-col w-full p-4">
       {/* Header with Title and Profile/Logout Buttons */}
       <header className="flex items-center justify-between w-full p-4 mx-auto mb-4 border shadow-2xl bg-white/5 backdrop-blur-3xl rounded-2xl border-white/10 animate-fade-in-slow">
         <h1 className="text-4xl font-extrabold text-gray-100 drop-shadow-lg">
@@ -109,7 +109,7 @@ const Dashboard = () => {
       <div className="flex flex-col flex-1 w-full mx-auto space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4">
         {/* Left Section: Student Schedule */}
         <div className="flex-1 p-4 rounded-2xl bg-white/5 backdrop-blur-3xl border border-white/10 transition-all duration-500 group hover:scale-[1.005] hover:shadow-[0_0_25px_rgba(253,230,138,0.2)]">
-          <h2 className="mb-4 text-2xl font-bold text-gray-100 drop-shadow-lg">
+          <h2 className="m-2 text-2xl font-bold text-center text-gray-100 drop-shadow-lg">
             Student Schedule
           </h2>
           <StudentSchedule />

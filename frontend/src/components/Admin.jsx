@@ -2,14 +2,16 @@ import React, { useState, useEffect, useRef } from "react";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import Loader from "./loader";
-import { FaCopy, FaHistory, FaArrowLeft } from "react-icons/fa";
+import { FaCopy, FaHistory, FaArrowLeft, FaCalendarAlt } from "react-icons/fa";
 import toast from "react-hot-toast";
+import AdminSchedule from "./AdminSchedule";
 
 const Admin = () => {
   const [todayAttendance, setTodayAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState([]);
+  const [showSchedule, setShowSchedule] = useState(false);
   const navigate = useNavigate();
 
   const lightRef = useRef(null);
@@ -44,7 +46,7 @@ const Admin = () => {
         const res = await fetch("http://127.0.0.1:5000/api/attendance/today");
         const data = await res.json();
         if (res.ok) {
-          setTodayAttendance(data.student_ids || []);
+          setTodayAttendance(data.students || []);
         } else {
           toast.error(data.message || "Failed to fetch today's attendance.");
         }
@@ -54,14 +56,15 @@ const Admin = () => {
         setLoading(false);
       }
     };
-    if (!showHistory) {
+    if (!showHistory && !showSchedule) {
       fetchTodayAttendance();
     }
-  }, [showHistory]);
+  }, [showHistory, showSchedule]);
 
   const fetchAttendanceHistory = async () => {
     setLoading(true);
     setShowHistory(true);
+    setShowSchedule(false);
     try {
       const res = await fetch("http://127.0.0.1:5000/api/attendance/history");
       const data = await res.json();
@@ -77,6 +80,16 @@ const Admin = () => {
     }
   };
 
+  const handleShowSchedule = () => {
+    setShowSchedule(true);
+    setShowHistory(false);
+  };
+
+  const handleBack = () => {
+    setShowHistory(false);
+    setShowSchedule(false);
+  };
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     toast.success(`${text} copied!`);
@@ -85,10 +98,6 @@ const Admin = () => {
   const handleLogout = () => {
     Cookies.remove("auth_token");
     navigate("/login");
-  };
-
-  const handleBack = () => {
-    setShowHistory(false);
   };
 
   if (loading) {
@@ -103,7 +112,7 @@ const Admin = () => {
   }
 
   return (
-    <div className="relative flex flex-col items-center w-screen h-screen overflow-auto bg-gray-950">
+    <div className="relative flex flex-col items-center w-screen min-h-screen overflow-auto bg-gray-950">
       <div
         ref={lightRef}
         className="fixed inset-0 z-0 pointer-events-none"
@@ -123,41 +132,57 @@ const Admin = () => {
               Logout
             </button>
           </div>
-          {!showHistory ? (
-            <button
-              onClick={fetchAttendanceHistory}
-              className="flex items-center space-x-2 py-2 px-4 text-white font-bold rounded-full bg-green-500/70 shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] cursor-pointer"
-            >
-              <FaHistory />
-              <span>Previous Attendance Records</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleBack}
-              className="flex items-center space-x-2 py-2 px-4 text-white font-bold rounded-full bg-green-500/70 shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] cursor-pointer"
-            >
-              <FaArrowLeft />
-              <span>Back to Today's Attendance</span>
-            </button>
-          )}
+
+          <div className="flex flex-wrap items-center space-x-2">
+            {!showHistory && !showSchedule ? (
+              <>
+                <button
+                  onClick={fetchAttendanceHistory}
+                  className="flex items-center space-x-2 py-2 px-4 text-white font-bold rounded-full bg-green-500/70 shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] cursor-pointer"
+                >
+                  <FaHistory />
+                  <span>Previous Attendance Records</span>
+                </button>
+                <button
+                  onClick={handleShowSchedule}
+                  className="flex items-center space-x-2 py-2 px-4 text-white font-bold rounded-full bg-yellow-500/70 shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(234,179,8,0.3)] cursor-pointer"
+                >
+                  <FaCalendarAlt />
+                  <span>Manage Schedules</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleBack}
+                className="flex items-center space-x-2 py-2 px-4 text-white font-bold rounded-full bg-green-500/70 shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] cursor-pointer"
+              >
+                <FaArrowLeft />
+                <span>Back</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Main Content Card */}
         <div className="p-8 m-4 border shadow-2xl rounded-2xl bg-white/5 backdrop-blur-3xl border-white/10">
-          {!showHistory ? (
+          {showSchedule ? (
+            <AdminSchedule />
+          ) : !showHistory ? (
             <div className="">
               <h2 className="mb-4 text-2xl font-semibold text-gray-200">
                 Today's Attendance
               </h2>
               {todayAttendance.length > 0 ? (
                 <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {todayAttendance.map((id) => (
+                  {todayAttendance.map((student) => (
                     <li
-                      key={id}
+                      key={student.studentId}
                       className="flex items-center justify-between p-3 transition-all duration-300 rounded-lg shadow-md cursor-pointer bg-white/10 hover:scale-[1.03] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                      onClick={() => copyToClipboard(id)}
+                      onClick={() => copyToClipboard(student.studentId)}
                     >
-                      <span className="text-gray-200">{id}</span>
+                      <span className="text-gray-200">
+                        {student.name} ({student.studentId})
+                      </span>
                       <FaCopy className="text-gray-400 hover:text-white" />
                     </li>
                   ))}
@@ -184,13 +209,15 @@ const Admin = () => {
                         Date: {record.date}
                       </h3>
                       <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
-                        {record.student_ids.map((id) => (
+                        {record.students.map((student) => (
                           <li
-                            key={id}
+                            key={student.studentId}
                             className="flex items-center justify-between p-2 transition-all duration-300 rounded-md cursor-pointer bg-white/5 hover:scale-[1.01] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                            onClick={() => copyToClipboard(id)}
+                            onClick={() => copyToClipboard(student.studentId)}
                           >
-                            <span className="text-gray-300">{id}</span>
+                            <span className="text-gray-300">
+                              {student.name} ({student.studentId})
+                            </span>
                             <FaCopy className="text-gray-500 hover:text-white" />
                           </li>
                         ))}

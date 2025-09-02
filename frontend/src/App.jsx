@@ -74,16 +74,16 @@ const App = () => {
   }
 
   return (
-    <div className="relative flex flex-col w-screen h-screen overflow-hidden font-sans text-white bg-gray-950">
+    <div className="relative flex flex-col w-screen min-h-screen font-sans text-white h-screenoverflow-scroll bg-gray-950">
       <div
         ref={lightRef}
-        className="absolute inset-0 z-0 pointer-events-none"
+        className="absolute left-0 right-0 z-0 h-full pointer-events-none"
       ></div>
       <div className="absolute bg-purple-500 rounded-full top-1/4 left-1/4 w-96 h-96 mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
       <div className="absolute bg-blue-500 rounded-full top-1/2 right-1/4 w-80 h-80 mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
       <div className="absolute bg-pink-500 rounded-full bottom-1/4 left-1/2 w-72 h-72 mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
 
-      <main className="relative z-10 flex items-center justify-center flex-1">
+      <main className="z-10 flex justify-center flex-1 w-full ">
         <Routes>
           <Route
             path="/register"

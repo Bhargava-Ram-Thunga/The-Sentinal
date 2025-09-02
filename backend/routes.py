@@ -23,6 +23,7 @@ auth_bp = Blueprint('auth', __name__)
 
 students_collection = db_connection.db['students']
 attendance_records = db_connection.db['attendance_records']
+schedules_collection = db_connection.db['schedules']
 
 
 # -- Helper function for pass word hashing and serialization --
@@ -34,7 +35,8 @@ def serialize_student(data):
         'name': data['name'],
         'email': data['email'],
         'password': hashed_password.decode('utf-8'),
-        'face_image_b64': None
+        'face_image_b64': None,
+        'section': None
     }
     return user_data
 
@@ -144,7 +146,6 @@ def add_face_data(authenticated_student_id, student_id):
 
     try:
         DeepFace.analyze(img_path=images_b64[0], actions=['age'], enforce_detection=True, detector_backend='retinaface',anti_spoofing=True)
-
         students_collection.update_one(
             {'studentId': student_id},
             {'$set': {'face_image_b64': images_b64[0]}},
@@ -229,39 +230,166 @@ def has_todays_attendance_marked(authenticated_student_id, student_id):
         return jsonify({'isAttendanceMarked': False}), 200
 
 
-@auth_bp.route('/profile', methods=['GET'])
+@auth_bp.route('/profile', methods=['GET', 'PATCH'])
 @token_required
 def profile(student_id):
     """
-    Fetches the profile information for the authenticated user.
+    Handles fetching and updating the authenticated user's profile.
     """
-    user = students_collection.find_one({'studentId': student_id}, {'password': 0, 'face_image_b64': 0, '_id': 0})
-    if user:
-        return jsonify(user), 200
+    if request.method == 'GET':
+        user = students_collection.find_one({'studentId': student_id}, {'password': 0, 'face_image_b64': 0, '_id': 0})
+        if user:
+            return jsonify(user), 200
+        else:
+            return jsonify({'message': 'Profile not found'}), 404
+    
+    elif request.method == 'PATCH':
+        data = request.get_json()
+        allowed_fields = ['name', 'email', 'section']
+        update_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+        if not update_data:
+            return jsonify({'message': 'No valid fields provided for update'}), 400
+
+        try:
+            result = students_collection.update_one(
+                {'studentId': student_id},
+                {'$set': update_data}
+            )
+            if result.matched_count == 0:
+                return jsonify({'message': 'User not found'}), 404
+            return jsonify({'message': 'Profile updated successfully'}), 200
+        except Exception as e:
+            return jsonify({'message': f'Update failed: {e}'}), 500
+
+@auth_bp.route('/change-password', methods=['POST'])
+@token_required
+def change_password(student_id):
+    """
+    Allows the authenticated user to change their password.
+    """
+    data = request.get_json()
+    old_password = data.get('oldPassword')
+    new_password = data.get('newPassword')
+
+    if not old_password or not new_password:
+        return jsonify({'message': 'Missing oldPassword or newPassword'}), 400
+
+    user = students_collection.find_one({'studentId': student_id})
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+
+    if checkpw(old_password.encode('utf-8'), user['password'].encode('utf-8')):
+        hashed_password = hashpw(new_password.encode('utf-8'), gensalt())
+        students_collection.update_one(
+            {'studentId': student_id},
+            {'$set': {'password': hashed_password.decode('utf-8')}}
+        )
+        return jsonify({'message': 'Password changed successfully'}), 200
     else:
-        return jsonify({'message': 'Profile not found'}), 404
+        return jsonify({'message': 'Invalid old password'}), 401
+
+
+@auth_bp.route('/api/admin/schedules', methods=['GET', 'POST'])
+def admin_schedules():
+    """
+    Handles fetching and updating schedules for a specific section by an admin.
+    """
+    if request.method == 'GET':
+        section = request.args.get('section')
+        if not section:
+            return jsonify({'message': 'Missing section parameter'}), 400
+
+        try:
+            schedule = schedules_collection.find_one({'section': section}, {'_id': 0, 'schedule_details': 1})
+            if schedule:
+                return jsonify({'schedule': schedule['schedule_details']}), 200
+            else:
+                return jsonify({'message': 'No schedule found for this section'}), 404
+        except Exception as e:
+            return jsonify({'message': f'Failed to fetch schedule: {e}'}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        section = data.get('section')
+        schedule = data.get('schedule')
+
+        if not section or not schedule:
+            return jsonify({'message': 'Missing section or schedule data'}), 400
+
+        try:
+            schedules_collection.update_one(
+                {'section': section},
+                {'$set': {'schedule_details': schedule}},
+                upsert=True
+            )
+            return jsonify({'message': f'Schedule for {section} updated successfully'}), 200
+        except Exception as e:
+            return jsonify({'message': f'Failed to update schedule: {e}'}), 500
+
+@auth_bp.route('/api/schedules/<student_id>', methods=['GET'])
+@token_required
+def get_schedule(authenticated_student_id, student_id):
+    """
+    Returns the schedule for the authenticated student's section.
+    """
+    if authenticated_student_id != student_id:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    user = students_collection.find_one({'studentId': student_id}, {'section': 1})
+    if not user or not user.get('section'):
+        return jsonify({'message': 'Student section not found'}), 404
+
+    schedule = schedules_collection.find_one({'section': user['section']}, {'_id': 0, 'schedule_details': 1})
+    
+    if schedule:
+        return jsonify({'schedule': schedule['schedule_details']}), 200
+    else:
+        return jsonify({'message': 'No schedule found for your section'}), 404
+
 
 @auth_bp.route('/api/attendance/today', methods=['GET'])
 def get_today_attendance():
     """
-    Returns a list of student IDs who have marked their attendance today.
+    Returns a list of student IDs and names who have marked their attendance today.
     """
     today_date = date.today().isoformat()
     record = attendance_records.find_one({'date': today_date})
     
-    if record:
-        return jsonify({'student_ids': record.get('student_ids', [])}), 200
+    if record and record.get('student_ids'):
+        student_ids = record['student_ids']
+        students_info = list(students_collection.find(
+            {'studentId': {'$in': student_ids}},
+            {'_id': 0, 'studentId': 1, 'name': 1}
+        ))
+        return jsonify({'students': students_info}), 200
     else:
-        return jsonify({'student_ids': []}), 200
+        return jsonify({'students': []}), 200
 
 @auth_bp.route('/api/attendance/history', methods=['GET'])
 def get_attendance_history():
     """
-    Returns a list of all historical attendance records.
+    Returns a list of all historical attendance records, including student names.
     """
     history = list(attendance_records.find({}, {'_id': 0}).sort('date', -1))
+    
+    # Create a mapping of studentId to name
+    all_student_ids = [student_id for record in history for student_id in record.get('student_ids', [])]
+    students_data = students_collection.find(
+        {'studentId': {'$in': all_student_ids}},
+        {'_id': 0, 'studentId': 1, 'name': 1}
+    )
+    name_map = {student['studentId']: student['name'] for student in students_data}
+    
+    # Replace student_ids with full student objects in each record
+    for record in history:
+        record['students'] = [
+            {'studentId': student_id, 'name': name_map.get(student_id, 'N/A')}
+            for student_id in record.get('student_ids', [])
+        ]
+        del record['student_ids']
+        
     if history:
         return jsonify({'history': history}), 200
     else:
         return jsonify({'message': 'No attendance history found'}), 404
-
